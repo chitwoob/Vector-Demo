@@ -1,0 +1,77 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Patient
+model Patient {
+  id            String          @id @default(cuid())
+  patientName   String
+  PatientReport PatientReport[]
+
+  // Prisma doen't support full-text search for Postgresql. We should be able to add this later.
+  // See the following links for more information:
+  // https://github.com/prisma/prisma/issues/8950
+  // https://www.prisma.io/docs/orm/prisma-client/queries/full-text-search#postgresql-1
+  //@@fulltext([patientName])
+}
+
+// Patient Report
+model PatientReport {
+  id         String   @id @default(cuid())
+  patientId  String
+  reportDate DateTime
+  summary    String   @db.Text
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+// Necessary for Next auth
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? // @db.Text
+  access_token             String? // @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? // @db.Text
+  session_state            String?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token_expires_in Int?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
